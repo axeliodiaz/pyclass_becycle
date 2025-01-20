@@ -1,11 +1,6 @@
 SCHEDULE_ID_START = 12700
 SCHEDULE_URL = "https://becycle.cl/clase/{class_id}/"
-SCHEDULES_WANTED = [
-    {"day": "Lunes", "time": "07:15", "instructor": "Goyo"},
-    {"day": "Miercoles", "time": "07:15", "instructor": "Victor"},
-    {"day": "Viernes", "time": "07:15", "instructor": "Ever"},
-    {"day": "Sabado", "time": "09:15", "instructor": "Goyo"},
-]
+SCHEDULES_WANTED = []
 NOT_ALLOWED_CLASS_TYPE = ["beat"]
-DEBUG = True
-EXCLUDE_ID_LIST = [12758]
+DEBUG = False
+MAX_CONSECUTIVE_ERRORS = 5
