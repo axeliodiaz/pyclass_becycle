@@ -18,11 +18,13 @@ def get_schedules():
 
         if not schedule:
             if settings.DEBUG:
-                print(f"Not found schedule in ID {class_id}")
+                print(f"Not found schedule in class ID {class_id}")
             class_id += 1
             continue
 
         if "error" in schedule.keys():
+            if settings.DEBUG:
+                print(f"Error in class ID {class_id}")
             break
 
         schedule["url"] = url
