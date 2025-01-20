@@ -17,6 +17,8 @@ def get_schedules():
         schedule = parse_schedule(html)
 
         if not schedule:
+            if settings.DEBUG:
+                print(f"Not found schedule in ID {class_id}")
             class_id += 1
             continue
 
