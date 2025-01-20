@@ -11,6 +11,11 @@ def get_schedules():
     class_id = settings.SCHEDULE_ID_START
 
     while should_check:
+        if class_id in settings.EXCLUDE_ID_LIST:
+            if settings.DEBUG:
+                print(f"Passing ID {class_id}")
+            continue
+
         url = settings.SCHEDULE_URL.format(class_id=class_id)
 
         html = fetch_url(url)
