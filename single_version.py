@@ -9,13 +9,9 @@ def get_schedules():
     should_check = True
     found_schedules = 0
     class_id = settings.SCHEDULE_ID_START
+    errors = 0
 
     while should_check:
-        if class_id in settings.EXCLUDE_ID_LIST:
-            if settings.DEBUG:
-                print(f"Passing ID {class_id}")
-            continue
-
         url = settings.SCHEDULE_URL.format(class_id=class_id)
 
         html = fetch_url(url)
@@ -30,7 +26,17 @@ def get_schedules():
         if "error" in schedule.keys():
             if settings.DEBUG:
                 print(f"Error in class ID {class_id}")
-            break
+            errors += 1
+            class_id += 1
+            if settings.DEBUG:
+                print(f"Passing by error ID {class_id}. Error {errors}")
+
+            if errors >= settings.MAX_CONSECUTIVE_ERRORS:
+                print(f"Finishing execution due to {settings.MAX_CONSECUTIVE_ERRORS} consecutive errors. Last ID: {class_id}")
+                break
+            continue
+
+        errors = 0
 
         schedule["url"] = url
         show_schedule(schedule)
