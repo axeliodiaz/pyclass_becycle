@@ -26,16 +26,23 @@ def check_valid_class_type(text):
     return True
 
 
-def check_valid_instructor(schedule,text):
+def check_valid_instructor(schedule, text):
     return schedule["instructor"] in text
 
 
-def get_valid_schedule(text):
+def get_valid_schedule(text, instructor=None):
     for schedule in SCHEDULES_WANTED:
-        if schedule["day"] in text and schedule["time"] in text:
+        if (
+            schedule["day"] in text
+            and schedule["time"]
+            and schedule["instructor"].lower() == instructor.lower()
+        ):
             return True, schedule
     return False, {}
 
 
 def show_schedule(schedule):
-    print(f"{schedule['day']} ({schedule['time']}). {schedule['url']} con {schedule['instructor']}\n")
+    schedule = {k: v for k, v in sorted(schedule.items(), key=lambda item: item[0])}
+    print(
+        f"{schedule['datetime'].format('dddd DD/MM (HH:mm)', locale='es').title()} [{schedule['instructor']}]: {schedule['url']}"
+    )
