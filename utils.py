@@ -2,7 +2,7 @@ import logging.config
 
 import requests
 
-from logging_config import LOGGING_CONFIG
+from logging_config.logging_config import LOGGING_CONFIG
 from settings import SCHEDULES_WANTED, NOT_ALLOWED_CLASS_TYPE
 
 logging.config.dictConfig(LOGGING_CONFIG)

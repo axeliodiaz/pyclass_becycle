@@ -1,10 +1,10 @@
 import logging.config
-from logging_config import LOGGING_CONFIG
 
 import aiohttp
 from bs4 import BeautifulSoup
 
 import settings
+from logging_config.logging_config import LOGGING_CONFIG
 from utils import (
     check_valid_html,
     check_valid_class_type,

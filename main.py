@@ -6,7 +6,7 @@ from fastapi import FastAPI
 
 import settings
 from constants import ERROR_MESSAGE_INTEGER_REQUIRED
-from logging_config import LOGGING_CONFIG
+from logging_config.logging_config import LOGGING_CONFIG
 from single_version import get_schedules
 
 logging.config.dictConfig(LOGGING_CONFIG)
