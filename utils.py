@@ -43,7 +43,7 @@ def get_valid_schedule(text):
     return False, {}
 
 
-def show_schedule(schedule):
+def save_schedule(schedule):
     logger.info(
         f"{schedule['day']} ({schedule['time']}). {schedule['url']} con {schedule['instructor']}\n"
     )

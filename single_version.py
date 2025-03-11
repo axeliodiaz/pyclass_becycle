@@ -10,7 +10,7 @@ from utils import (
     check_valid_class_type,
     get_valid_schedule,
     check_valid_instructor,
-    show_schedule,
+    save_schedule,
 )
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -70,7 +70,7 @@ async def process_schedule(session, class_id):
     schedule = await parse_schedule(html)
     if schedule and "error" not in schedule:
         schedule["url"] = url
-        show_schedule(schedule)
+        save_schedule(schedule)
         return True, 0
     else:
         return False, 1
