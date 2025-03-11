@@ -5,6 +5,7 @@ import httpx
 from fastapi import FastAPI
 
 import settings
+from constants import ERROR_MESSAGE_INTEGER_REQUIRED
 from logging_config import LOGGING_CONFIG
 from single_version import get_schedules
 
@@ -25,12 +26,16 @@ async def root():
                 await client.get(f"{settings.FULL_HOST}/schedule/{starting_class_id}")
             except Exception as e:
                 # Log the error instead of printing it
-                logger.error(f"Failed to trigger schedule for class ID 150: {e}")
+                logger.error(
+                    f"Failed to trigger schedule for class ID {starting_class_id}: {e}"
+                )
 
     # Schedule the HTTP request without waiting for it
     asyncio.create_task(trigger_schedule())
 
-    message = f"Triggered schedules from default and specific class ID 150"
+    message = (
+        f"Triggered schedules from default and specific class ID {starting_class_id}"
+    )
     return {"message": message}
 
 
@@ -38,7 +43,7 @@ async def root():
 async def schedule_by_id(class_id: int):
     """Starts checking schedules from a specific class ID."""
     if class_id < 0:
-        return {"error": "Invalid class ID. It must be a positive integer."}
+        return {"error": ERROR_MESSAGE_INTEGER_REQUIRED}
 
     asyncio.create_task(get_schedules(class_id))
     message = f"Checked schedule class ID: {class_id}"
