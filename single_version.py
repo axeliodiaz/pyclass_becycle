@@ -4,13 +4,13 @@ import aiohttp
 from bs4 import BeautifulSoup
 
 import settings
+from clients.redis import RedisClient
 from logging_config.logging_config import LOGGING_CONFIG
 from utils import (
     check_valid_html,
     check_valid_class_type,
     get_valid_schedule,
     check_valid_instructor,
-    save_schedule,
 )
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -68,9 +68,10 @@ async def process_schedule(session, class_id):
     url = settings.SCHEDULE_URL.format(class_id=class_id)
     html = await fetch_url(session, url)
     schedule = await parse_schedule(html)
+    redis_client = RedisClient()
     if schedule and "error" not in schedule:
         schedule["url"] = url
-        save_schedule(schedule)
+        await redis_client.save_schedule(schedule)
         return True, 0
     else:
         return False, 1

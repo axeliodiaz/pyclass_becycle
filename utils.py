@@ -1,7 +1,9 @@
 import logging.config
 
+import httpx
 import requests
 
+import settings
 from logging_config.logging_config import LOGGING_CONFIG
 from settings import SCHEDULES_WANTED, NOT_ALLOWED_CLASS_TYPE
 
@@ -43,7 +45,11 @@ def get_valid_schedule(text):
     return False, {}
 
 
-def save_schedule(schedule):
-    logger.info(
-        f"{schedule['day']} ({schedule['time']}). {schedule['url']} con {schedule['instructor']}\n"
-    )
+async def trigger_schedule(class_id: int):
+    """Trigger schedule for a specific class ID."""
+    async with httpx.AsyncClient() as client:
+        try:
+            await client.post(f"{settings.FULL_HOST}/schedule/{class_id}")
+            logger.info(f"Successfully triggered schedule for class ID {class_id}")
+        except Exception as e:
+            logger.error(f"Failed to trigger schedule for class ID {class_id}: {e}")
