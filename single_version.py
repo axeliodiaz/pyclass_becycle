@@ -1,75 +1,84 @@
+import logging.config
+from logging_config import LOGGING_CONFIG
+
+import aiohttp
 from bs4 import BeautifulSoup
 
 import settings
-from utils import check_valid_html, check_valid_class_type, get_valid_schedule, check_valid_instructor, fetch_url, \
-    show_schedule
+from utils import (
+    check_valid_html,
+    check_valid_class_type,
+    get_valid_schedule,
+    check_valid_instructor,
+    show_schedule,
+)
+
+logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger(__name__)
 
 
-def get_schedules():
-    should_check = True
-    found_schedules = 0
-    class_id = settings.SCHEDULE_ID_START
-    errors = 0
-
-    while should_check:
-        url = settings.SCHEDULE_URL.format(class_id=class_id)
-
-        html = fetch_url(url)
-        schedule = parse_schedule(html)
-
-        if not schedule:
-            if settings.DEBUG:
-                print(f"Not found schedule in class ID {class_id}")
-            class_id += 1
-            continue
-
-        if "error" in schedule.keys():
-            if settings.DEBUG:
-                print(f"Error in class ID {class_id}")
-            errors += 1
-            class_id += 1
-            if settings.DEBUG:
-                print(f"Passing by error ID {class_id}. Error {errors}")
-
-            if errors >= settings.MAX_CONSECUTIVE_ERRORS:
-                print(f"Finishing execution due to {settings.MAX_CONSECUTIVE_ERRORS} consecutive errors. Last ID: {class_id}")
-                break
-            continue
-
-        errors = 0
-
-        schedule["url"] = url
-        show_schedule(schedule)
-        class_id += 1
-        found_schedules += 1
-        if found_schedules >= 10:
-            break
+async def fetch_url(session, url):
+    """Asynchronously fetches the content of a URL."""
+    try:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            return await response.text()
+    except Exception as e:
+        logger.error(f"Error fetching {url}: {e}")
+        return None
 
 
-def parse_schedule(html):
+async def parse_schedule(html):
+    """Parses the HTML content to extract the schedule."""
+    if not html:
+        return {"error": "error"}
+
     soup = BeautifulSoup(html, features="html.parser")
-    schedules = []
     main_text = soup.find("main")
 
     if not check_valid_html(main_text):
         return {"error": "error"}
 
-    date_time_text = soup.find("div", class_="fecha").text
-    title_text = soup.find("div", class_="name").text
+    date_time = soup.find("div", class_="fecha")
+    title = soup.find("div", class_="name")
+
+    if not date_time or not title:
+        return {"error": "error"}
+
+    date_time_text = date_time.text
+    title_text = title.text
 
     if not check_valid_class_type(text=title_text):
-        return schedules
+        return {}
 
     is_schedule_valid, schedule = get_valid_schedule(text=date_time_text)
     if not is_schedule_valid:
-        return schedules
+        return {}
 
     if not check_valid_instructor(schedule, title_text):
-        return schedules
+        return {}
 
+    # Extract the day from the date_time text
     schedule["day"] = date_time_text.split(",")[0]
     return schedule
 
 
-if __name__ == "__main__":
-    get_schedules()
+async def process_schedule(session, class_id):
+    """Processes a specific schedule by its class ID."""
+    url = settings.SCHEDULE_URL.format(class_id=class_id)
+    html = await fetch_url(session, url)
+    schedule = await parse_schedule(html)
+    if schedule and "error" not in schedule:
+        schedule["url"] = url
+        show_schedule(schedule)
+        return True, 0
+    else:
+        return False, 1
+
+
+async def get_schedules(class_id: int):
+    """Main function to retrieve schedules starting from a given class ID."""
+    async with aiohttp.ClientSession() as session:
+        success, error = await process_schedule(session, class_id)
+        if not success:
+            logger.warning(f"Error at ID {class_id}. Success: {success}")

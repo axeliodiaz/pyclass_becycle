@@ -1,4 +1,7 @@
-SCHEDULE_ID_START = 12700
+SCHEDULE_ID_START = 13469
+HOST = "localhost"
+PORT = 8000
+FULL_HOST = f"http://{HOST}:{PORT}"
 SCHEDULE_URL = "https://becycle.cl/clase/{class_id}/"
 SCHEDULES_WANTED = []
 NOT_ALLOWED_CLASS_TYPE = ["beat"]
