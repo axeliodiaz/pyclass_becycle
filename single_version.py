@@ -37,26 +37,26 @@ async def parse_schedule(html):
     main_text = soup.find("main")
 
     if not check_valid_html(main_text):
-        return {"error": "error"}
+        return {"error": "check_valid_html"}
 
     date_time = soup.find("div", class_="fecha")
     title = soup.find("div", class_="name")
 
     if not date_time or not title:
-        return {"error": "error"}
+        return {"error": "date_time or title"}
 
     date_time_text = date_time.text
     title_text = title.text
 
     if not check_valid_class_type(text=title_text):
-        return {}
+        return {"error": "check_valid_class_type"}
 
     is_schedule_valid, schedule = get_valid_schedule(text=date_time_text)
     if not is_schedule_valid:
-        return {}
+        return {"error": "is_schedule_valid"}
 
     if not check_valid_instructor(schedule, title_text):
-        return {}
+        return {"error": "check_valid_instructor"}
 
     # Extract the day from the date_time text
     schedule["day"] = date_time_text.split(",")[0]
