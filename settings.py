@@ -1,4 +1,4 @@
-SCHEDULE_ID_START = 12700
+SCHEDULE_ID_START = 13469
 SCHEDULE_URL = "https://becycle.cl/clase/{class_id}/"
 SCHEDULES_WANTED = []
 NOT_ALLOWED_CLASS_TYPE = ["beat"]

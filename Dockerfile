@@ -16,4 +16,5 @@ COPY . .
 VOLUME /app
 
 # Set the default command to run the application
-CMD ["python", "main.py"]
+CMD ["uvicorn", "main:app.py", "--reload"]
+
