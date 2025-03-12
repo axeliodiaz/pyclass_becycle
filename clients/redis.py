@@ -45,7 +45,7 @@ class RedisClient:
         else:
             logger.debug(f"Saved schedule to Redis: {schedule}")
             logger.info(
-                f"{schedule['day']} ({schedule['time']}). {schedule['url']} con {schedule['instructor']}\n"
+                f"{schedule['date_time_text']} {schedule['url']} con {schedule['instructor']}\n"
             )
 
     async def get_all_schedules(self):

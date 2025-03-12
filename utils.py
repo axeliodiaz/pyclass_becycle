@@ -5,7 +5,7 @@ import requests
 
 import settings
 from logging_config.logging_config import LOGGING_CONFIG
-from settings import SCHEDULES_WANTED, NOT_ALLOWED_CLASS_TYPE
+from settings import NOT_ALLOWED_CLASS_TYPE
 
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
@@ -34,15 +34,29 @@ def check_valid_class_type(text):
     return True
 
 
-def check_valid_instructor(schedule, text):
-    return schedule["instructor"] in text
+def get_valid_instructor(text: str) -> (bool, str):
+    for instructor in settings.INSTRUCTORS_WANTED:
+        if instructor in text:
+            return True, instructor
+    return False, None
 
 
-def get_valid_schedule(text):
-    for schedule in SCHEDULES_WANTED:
-        if schedule["day"] in text and schedule["time"] in text:
-            return True, schedule
-    return False, {}
+def get_valid_time(text: str) -> (bool, str, str):
+    for time_wanted in settings.TIMES_WANTED:
+        day = list(time_wanted.keys())[0]
+        time = list(time_wanted.values())[0]
+        if day in text and time in text:
+            return True, day, time
+    return False, None, None
+
+
+def build_schedule(date_time_text, instructor, url):
+    data = {
+        "date_time_text": date_time_text,
+        "instructor": instructor,
+        "url": url,
+    }
+    return data
 
 
 async def trigger_schedule(class_id: int):

@@ -9,7 +9,7 @@ import settings
 from clients.redis import RedisClient
 from constants import ERROR_MESSAGE_INTEGER_REQUIRED
 from logging_config.logging_config import LOGGING_CONFIG
-from single_version import get_schedules
+from single_version import create_schedules
 from utils import trigger_schedule
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI()
 
 
-@app.get("/")
+@app.post("/")
 async def root():
     """Trigger schedules for a range of class IDs using a semaphore rate limiter."""
     start_class_id = settings.SCHEDULE_ID_START
@@ -64,9 +64,12 @@ async def schedule_by_id(class_id: int):
     if class_id < 0:
         return {"error": ERROR_MESSAGE_INTEGER_REQUIRED}
 
-    asyncio.create_task(get_schedules(class_id))
-    message = f"Checked schedule class ID: {class_id}"
-    return {"message": message}
+    if not settings.ASYNC_MODE:
+        _success, schedule = await create_schedules(class_id=class_id)
+        return schedule
+
+    asyncio.create_task(create_schedules(class_id=class_id))
+    return {"message": f"Schedules for class ID {class_id} successfully triggered."}
 
 
 @app.get("/schedules")

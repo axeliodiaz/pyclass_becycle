@@ -9,8 +9,9 @@ from logging_config.logging_config import LOGGING_CONFIG
 from utils import (
     check_valid_html,
     check_valid_class_type,
-    get_valid_schedule,
-    check_valid_instructor,
+    get_valid_time,
+    build_schedule,
+    get_valid_instructor,
 )
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -28,7 +29,7 @@ async def fetch_url(session, url):
         return None
 
 
-async def parse_schedule(html):
+async def parse_schedule(html, url):
     """Parses the HTML content to extract the schedule."""
     if not html:
         return {"error": "error"}
@@ -51,15 +52,21 @@ async def parse_schedule(html):
     if not check_valid_class_type(text=title_text):
         return {"error": "check_valid_class_type"}
 
-    is_schedule_valid, schedule = get_valid_schedule(text=date_time_text)
-    if not is_schedule_valid:
-        return {"error": "is_schedule_valid"}
+    is_valid_time, day, time = get_valid_time(text=date_time_text)
+    if not is_valid_time:
+        return {"error": "get_valid_time"}
 
-    if not check_valid_instructor(schedule, title_text):
+    is_valid_instructor, instructor = get_valid_instructor(text=title_text)
+    if not is_valid_instructor:
         return {"error": "check_valid_instructor"}
 
     # Extract the day from the date_time text
-    schedule["day"] = date_time_text.split(",")[0]
+    # schedule["day"] = date_time_text.split(",")[0]
+    schedule = build_schedule(
+        date_time_text=date_time_text,
+        instructor=instructor,
+        url=url,
+    )
     return schedule
 
 
@@ -67,19 +74,21 @@ async def process_schedule(session, class_id):
     """Processes a specific schedule by its class ID."""
     url = settings.SCHEDULE_URL.format(class_id=class_id)
     html = await fetch_url(session, url)
-    schedule = await parse_schedule(html)
+    schedule = await parse_schedule(html, url)
     redis_client = RedisClient()
     if schedule and "error" not in schedule:
         schedule["url"] = url
         await redis_client.save_schedule(schedule)
-        return True, 0
+        return True, schedule
     else:
-        return False, 1
+        logger.error(schedule)
+        return False, schedule
 
 
-async def get_schedules(class_id: int):
+async def create_schedules(class_id: int):
     """Main function to retrieve schedules starting from a given class ID."""
     async with aiohttp.ClientSession() as session:
-        success, error = await process_schedule(session, class_id)
+        success, schedule = await process_schedule(session, class_id)
         if not success:
-            logger.warning(f"Error at ID {class_id}. Success: {success}")
+            logger.warning(f"Error at ID {class_id}. Success: {success}. {schedule}")
+        return success, schedule
