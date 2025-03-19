@@ -1,3 +1,5 @@
+"""Base settings for the application."""
+
 HOST = "localhost"
 PORT = 8000
 FULL_HOST = f"http://{HOST}:{PORT}"
@@ -21,6 +23,9 @@ SCHEDULES_LIMIT = 1000
 REQUESTS_PER_SECOND = 10
 ASYNC_MODE = True
 
-EMAIL_SENDER = ""
-EMAIL_PASSWORD = ""
-EMAIL_RECIPIENTS = [""]
+# Email settings (to be overridden in local.py)
+EMAIL_SENDER = None
+EMAIL_PASSWORD = None
+EMAIL_RECIPIENTS = []
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 465

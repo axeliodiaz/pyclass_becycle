@@ -1,3 +1,5 @@
+"""Module for fetching and parsing class schedules from a single URL."""
+
 import logging.config
 
 import aiohttp
@@ -24,8 +26,8 @@ async def fetch_url(session, url):
         async with session.get(url) as response:
             response.raise_for_status()
             return await response.text()
-    except Exception as e:
-        logger.error(f"Error fetching {url}: {e}")
+    except aiohttp.ClientError as e:
+        logger.error("Error fetching %s: %s", url, e)
         return None
 
 
@@ -52,7 +54,7 @@ async def parse_schedule(html, url):
     if not check_valid_class_type(text=title_text):
         return {"error": "check_valid_class_type"}
 
-    is_valid_time, day, time = get_valid_time(text=date_time_text)
+    is_valid_time, _, _ = get_valid_time(text=date_time_text)
     if not is_valid_time:
         return {"error": "get_valid_time"}
 
@@ -60,8 +62,6 @@ async def parse_schedule(html, url):
     if not is_valid_instructor:
         return {"error": "check_valid_instructor"}
 
-    # Extract the day from the date_time text
-    # schedule["day"] = date_time_text.split(",")[0]
     schedule = build_schedule(
         date_time_text=date_time_text,
         instructor=instructor,
@@ -90,5 +90,5 @@ async def create_schedules(class_id: int):
     async with aiohttp.ClientSession() as session:
         success, schedule = await process_schedule(session, class_id)
         if not success:
-            logger.warning(f"Error at ID {class_id}. Success: {success}. {schedule}")
+            logger.warning("Error at ID %s. Success: %s. %s", class_id, success, schedule)
         return success, schedule

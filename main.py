@@ -1,9 +1,9 @@
+"""FastAPI application for managing class schedules with rate limiting and Redis storage."""
+
 import asyncio
 import logging.config
 
 from fastapi import FastAPI
-import httpx
-import time
 
 import settings
 from clients.redis import RedisClient
@@ -23,27 +23,6 @@ async def root():
     start_class_id = settings.SCHEDULE_ID_START
     limit = settings.SCHEDULES_LIMIT
     final_class_id = start_class_id + limit
-
-    semaphore = asyncio.Semaphore(settings.REQUESTS_PER_SECOND)
-
-    async def trigger_schedule(class_id: int):
-        """Trigger schedule for a specific class ID."""
-        async with semaphore:
-            start_time = time.monotonic()
-            async with httpx.AsyncClient() as client:
-                try:
-                    await client.post(f"{settings.FULL_HOST}/schedule/{class_id}")
-                    logger.info(
-                        f"Successfully triggered schedule for class ID {class_id}"
-                    )
-                except Exception as e:
-                    logger.error(
-                        f"Failed to trigger schedule for class ID {class_id}: {e}"
-                    )
-            # Calculate the time taken and adjust the rate
-            elapsed = time.monotonic() - start_time
-            wait_time = max(0, (1 / settings.REQUESTS_PER_SECOND) - elapsed)
-            await asyncio.sleep(wait_time)
 
     tasks = [
         asyncio.create_task(trigger_schedule(class_id))
