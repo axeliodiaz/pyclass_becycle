@@ -64,7 +64,10 @@ pip install -r requirements.txt
    ```bash
    docker-compose down
    ```
-
+## Run uvicorn
+   ```bash
+   uvicorn main:app --reload --log-level debug
+   ```
 ### Switching Between Virtualenv and Docker
 - If you prefer a local Python environment, use the `virtualenv` setup.
 - For isolated, reproducible environments, use Docker or Docker Compose.
