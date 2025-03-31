@@ -2,7 +2,9 @@
 
 import asyncio
 import logging.config
+from urllib.parse import urljoin
 
+import requests
 from fastapi import FastAPI
 
 import settings
@@ -10,7 +12,7 @@ from clients.redis import RedisClient
 from constants import ERROR_MESSAGE_INTEGER_REQUIRED
 from logging_config.logging_config import LOGGING_CONFIG
 from single_version import create_schedules
-from utils import trigger_schedule
+from utils import trigger_schedule, send_classes_report_email
 
 logging.config.dictConfig(LOGGING_CONFIG)
 logger = logging.getLogger(__name__)
@@ -29,8 +31,11 @@ async def root():
         for class_id in range(start_class_id, final_class_id)
     ]
 
-    # Esperar a que todas las tareas se completen
+    # Wait for all tasks are completed
     await asyncio.gather(*tasks)
+
+    if settings.SEND_EMAIL_REPORT:
+        requests.post(urljoin(settings.BASE_URL, url="/schedules/send_email"))
 
     return {
         "message": f"Triggered schedules from class ID {start_class_id} to {final_class_id - 1}"
@@ -66,3 +71,19 @@ async def clear_schedules():
     redis_client = RedisClient()
     await redis_client.clear_schedules()
     return {"message": "Schedules list cleared."}
+
+
+@app.post("/schedules/send_email")
+async def send_email_report_email():
+    redis_client = RedisClient()
+    schedules = await redis_client.get_all_schedules()
+    body = ""
+    logger.info("Sending email report.")
+    requests.post(urljoin(settings.BASE_URL, url="/schedules/send_email"))
+    for schedule in schedules:
+        date_time_text = schedule["date_time_text"]
+        instructor = schedule["instructor"]
+        url = schedule["url"]
+        body += f"{instructor}. {date_time_text}. <a href='{url}'>{url}</a>\n"
+
+    await send_classes_report_email(body=body)

@@ -2,7 +2,7 @@
 
 HOST = "localhost"
 PORT = 8000
-FULL_HOST = f"http://{HOST}:{PORT}"
+BASE_URL = f"http://{HOST}:{PORT}"
 SCHEDULE_URL = "https://becycle.cl/clase/{class_id}/"
 INSTRUCTORS_WANTED = []
 TIMES_WANTED = [
@@ -29,3 +29,5 @@ EMAIL_PASSWORD = None
 EMAIL_RECIPIENTS = []
 SMTP_SERVER = "smtp.gmail.com"
 SMTP_PORT = 465
+SEND_EMAIL_REPORT = True
+EMAIL_SUBJECT = "New classes schedules"

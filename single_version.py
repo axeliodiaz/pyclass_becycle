@@ -71,7 +71,14 @@ async def parse_schedule(html, url):
 
 
 async def process_schedule(session, class_id):
-    """Processes a specific schedule by its class ID."""
+    """Processes a specific schedule by its class ID.
+
+    data = {
+        "date_time_text": date_time_text,
+        "instructor": instructor,
+        "url": url,
+    }
+    """
     url = settings.SCHEDULE_URL.format(class_id=class_id)
     html = await fetch_url(session, url)
     schedule = await parse_schedule(html, url)
@@ -90,5 +97,7 @@ async def create_schedules(class_id: int):
     async with aiohttp.ClientSession() as session:
         success, schedule = await process_schedule(session, class_id)
         if not success:
-            logger.warning("Error at ID %s. Success: %s. %s", class_id, success, schedule)
+            logger.warning(
+                "Error at ID %s. Success: %s. %s", class_id, success, schedule
+            )
         return success, schedule

@@ -8,6 +8,7 @@ import httpx
 import requests
 
 import settings
+from clients.notifications import EmailNotifier
 from logging_config.logging_config import LOGGING_CONFIG
 from settings import NOT_ALLOWED_CLASS_TYPE
 
@@ -71,16 +72,15 @@ def build_schedule(date_time_text, instructor, url):
     }
     return data
 
+
 async def trigger_schedule(class_id: int):
     """Trigger schedule for a specific class ID."""
     async with semaphore:
         start_time = time.monotonic()
         async with httpx.AsyncClient() as client:
             try:
-                await client.post(f"{settings.FULL_HOST}/schedule/{class_id}")
-                logger.info(
-                    "Successfully triggered schedule for class ID %s", class_id
-                )
+                await client.post(f"{settings.BASE_URL}/schedule/{class_id}")
+                logger.info("Successfully triggered schedule for class ID %s", class_id)
             except Exception as e:
                 logger.error(
                     "Failed to trigger schedule for class ID %s: %s", class_id, e
@@ -89,3 +89,9 @@ async def trigger_schedule(class_id: int):
         elapsed = time.monotonic() - start_time
         wait_time = max(0, (1 / settings.REQUESTS_PER_SECOND) - elapsed)
         await asyncio.sleep(wait_time)
+
+
+async def send_classes_report_email(body):
+    """Send classes report email to pre-defined recipient emails."""
+    breakpoint()
+    await EmailNotifier().send_email(body=body)
