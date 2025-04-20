@@ -4,6 +4,7 @@ import asyncio
 import logging.config
 from urllib.parse import urljoin
 
+import arrow
 import requests
 from fastapi import FastAPI
 
@@ -21,24 +22,19 @@ app = FastAPI()
 
 @app.post("/")
 async def root():
-    """Trigger schedules for a range of class IDs using a semaphore rate limiter."""
+    """Trigger schedules for a range of class IDs without waiting for tasks to complete."""
     start_class_id = settings.SCHEDULE_ID_START
     limit = settings.SCHEDULES_LIMIT
     final_class_id = start_class_id + limit
 
-    tasks = [
+    for class_id in range(start_class_id, final_class_id):
         asyncio.create_task(trigger_schedule(class_id))
-        for class_id in range(start_class_id, final_class_id)
-    ]
-
-    # Wait for all tasks are completed
-    await asyncio.gather(*tasks)
 
     if settings.SEND_EMAIL_REPORT:
         requests.post(urljoin(settings.BASE_URL, url="/schedules/send_email"))
 
     return {
-        "message": f"Triggered schedules from class ID {start_class_id} to {final_class_id - 1}"
+        "message": f"Triggered schedules from class ID {start_class_id} to {final_class_id - 1} (async started)"
     }
 
 
@@ -77,13 +73,14 @@ async def clear_schedules():
 async def send_email_report_email():
     redis_client = RedisClient()
     schedules = await redis_client.get_all_schedules()
+    schedules_sorted = sorted(schedules, key=lambda s: arrow.get(s["datetime"]))
     body = ""
-    logger.info("Sending email report.")
-    requests.post(urljoin(settings.BASE_URL, url="/schedules/send_email"))
-    for schedule in schedules:
+    print(schedules)
+    for schedule in schedules_sorted:
         date_time_text = schedule["date_time_text"]
         instructor = schedule["instructor"]
         url = schedule["url"]
-        body += f"{instructor}. {date_time_text}. <a href='{url}'>{url}</a>\n"
+        body += f"{instructor}. {date_time_text}: {url}\n\n"
 
     await send_classes_report_email(body=body)
+    return {"message": "Email sending."}

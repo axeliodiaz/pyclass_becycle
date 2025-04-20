@@ -13,13 +13,14 @@ TIMES_WANTED = [
     {"Jueves": "07:15"},
     {"Viernes": "07:15"},
     {"Sábado": "09:15"},
+    {"Sabado": "09:15"},
 ]
 
 NOT_ALLOWED_CLASS_TYPE = ["beat"]
 DEBUG = False
 
-SCHEDULE_ID_START = 13469
-SCHEDULES_LIMIT = 1000
+SCHEDULE_ID_START = 13847
+SCHEDULES_LIMIT = 500
 REQUESTS_PER_SECOND = 10
 ASYNC_MODE = True
 
@@ -27,7 +28,13 @@ ASYNC_MODE = True
 EMAIL_SENDER = None
 EMAIL_PASSWORD = None
 EMAIL_RECIPIENTS = []
-SMTP_SERVER = "smtp.gmail.com"
-SMTP_PORT = 465
-SEND_EMAIL_REPORT = True
+SMTP_SERVER = "sandbox.smtp.mailtrap.io"  # Mailtrap SMTP server
+SMTP_PORT = 2525  # Mailtrap SMTP port
+SEND_EMAIL_REPORT = False
 EMAIL_SUBJECT = "New classes schedules"
+
+# Mailtrap API settings
+MAILTRAP_API_TOKEN = "c5d94f9dd2af8e8861145c96d7f09a88"
+MAILTRAP_API_HOST = "sandbox.api.mailtrap.io"
+MAILTRAP_INBOX_ID = "509395"  # Your inbox ID
+USE_MAILTRAP_API = True  # Flag to switch between SMTP and API

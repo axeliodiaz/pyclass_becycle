@@ -59,7 +59,6 @@ class RedisClient:
 
         try:
             schedules = await redis_conn.lrange(REDIS_KEY, 0, -1)
-            logger.info(f"Retrieved {len(schedules)} schedules from Redis: {schedules}")
         except Exception as e:
             logger.error(f"Error retrieving schedules from Redis: {e}")
             return []

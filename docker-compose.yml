@@ -8,7 +8,7 @@ services:
     volumes:
       - .:/app
     working_dir: /app
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn main:app --host 0.0.0.0 --reload --log-level debug
     environment:
       - PYTHONUNBUFFERED=1
       - REDIS_HOST=redis
@@ -25,7 +25,7 @@ services:
     container_name: redis
     restart: always
     ports:
-      - "6380:6379"  # Cambiado el puerto expuesto
+      - "6380:6379"
     networks:
       - app_network
 

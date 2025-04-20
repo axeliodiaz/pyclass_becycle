@@ -29,7 +29,6 @@ mdurl==0.1.2
 multidict==6.1.0
 propcache==0.3.0
 pydantic==2.10.6
-pydantic_core==2.27.2
 Pygments==2.19.1
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1

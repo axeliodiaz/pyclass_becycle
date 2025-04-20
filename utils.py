@@ -1,9 +1,11 @@
 """Utility functions for schedule validation, URL fetching, and rate limiting."""
 
+import asyncio
 import logging.config
+import re
 import time
 
-import asyncio
+import arrow
 import httpx
 import requests
 
@@ -52,6 +54,22 @@ def get_valid_instructor(text: str) -> (bool, str):
             return True, instructor
     return False, None
 
+def get_datetime_from_text(text: str) -> arrow.Arrow:
+    # Remove day name and "de", "hrs.", etc.
+    cleaned = re.sub(
+        r'(Lunes|Martes|Miércoles|Miercoles|Jueves|Viernes|Sábado|Sabado|Domingo),?\s*',
+        '',
+        text,
+        flags=re.IGNORECASE,
+    )
+    cleaned = cleaned.replace(' de ', ' ').replace('hrs.', '').strip()
+
+    # Define the format: "01 Abril 07:15"
+    date_time = arrow.get(cleaned, 'DD MMMM, HH:mm', locale='es')
+
+    # Add current year if not provided
+    return str(date_time.replace(year=arrow.now().year).datetime)
+
 
 def get_valid_time(text: str) -> (bool, str, str):
     """Get the valid time from the text."""
@@ -63,12 +81,13 @@ def get_valid_time(text: str) -> (bool, str, str):
     return False, None, None
 
 
-def build_schedule(date_time_text, instructor, url):
+def build_schedule(date_time_text, instructor, url, datetime):
     """Build the schedule."""
     data = {
         "date_time_text": date_time_text,
         "instructor": instructor,
         "url": url,
+        "datetime": datetime
     }
     return data
 
@@ -93,5 +112,4 @@ async def trigger_schedule(class_id: int):
 
 async def send_classes_report_email(body):
     """Send classes report email to pre-defined recipient emails."""
-    breakpoint()
     await EmailNotifier().send_email(body=body)

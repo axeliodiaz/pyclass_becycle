@@ -13,7 +13,7 @@ from utils import (
     check_valid_class_type,
     get_valid_time,
     build_schedule,
-    get_valid_instructor,
+    get_valid_instructor, get_datetime_from_text,
 )
 
 logging.config.dictConfig(LOGGING_CONFIG)
@@ -49,6 +49,7 @@ async def parse_schedule(html, url):
         return {"error": "date_time or title"}
 
     date_time_text = date_time.text
+    date_time = get_datetime_from_text(text=date_time_text)
     title_text = title.text
 
     if not check_valid_class_type(text=title_text):
@@ -66,6 +67,7 @@ async def parse_schedule(html, url):
         date_time_text=date_time_text,
         instructor=instructor,
         url=url,
+        datetime=date_time,
     )
     return schedule
 
