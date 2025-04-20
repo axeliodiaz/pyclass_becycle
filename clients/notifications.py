@@ -1,10 +1,13 @@
 """Module for handling email notifications using Mailtrap (debug) or Mandrill (production)."""
 
 from abc import ABC, abstractmethod
-
+import logging
 import aiohttp
 
 import settings
+from clients.constants import MAILTRAP_API_URL, MANDRILL_API_URL
+
+logger = logging.getLogger(__name__)
 
 
 class BaseEmailNotifier(ABC):
@@ -54,10 +57,10 @@ class MailtrapEmailNotifier(BaseEmailNotifier):
         :return: True if the email was sent successfully, False otherwise.
         """
         if not self.validate_config():
-            print("Mailtrap configuration is invalid")
+            logger.error("Mailtrap configuration is invalid")
             return False
 
-        url = f"https://{self.api_host}/api/send/{self.inbox_id}"
+        url = MAILTRAP_API_URL.format(host=self.api_host, inbox_id=self.inbox_id)
         
         payload = {
             "from": {
@@ -79,14 +82,14 @@ class MailtrapEmailNotifier(BaseEmailNotifier):
             async with aiohttp.ClientSession() as session:
                 async with session.post(url, headers=headers, json=payload) as response:
                     if response.status == 200:
-                        print(f"Email sent successfully to {', '.join(self.recipient_emails)}")
+                        logger.info(f"Email sent successfully to {', '.join(self.recipient_emails)}")
                         return True
                     else:
                         error_text = await response.text()
-                        print(f"Failed to send email via Mailtrap: {error_text}")
+                        logger.error(f"Failed to send email via Mailtrap: {error_text}")
                         return False
         except Exception as e:
-            print(f"Failed to send email via Mailtrap: {str(e)}")
+            logger.error(f"Failed to send email via Mailtrap: {str(e)}")
             return False
 
 
@@ -113,11 +116,9 @@ class MandrillEmailNotifier(BaseEmailNotifier):
         :return: True if the email was sent successfully, False otherwise.
         """
         if not self.validate_config():
-            print("Mandrill configuration is invalid")
+            logger.error("Mandrill configuration is invalid")
             return False
 
-        url = "https://mandrillapp.com/api/1.0/messages/send.json"
-        
         payload = {
             "key": self.api_key,
             "message": {
@@ -133,16 +134,21 @@ class MandrillEmailNotifier(BaseEmailNotifier):
 
         try:
             async with aiohttp.ClientSession() as session:
-                async with session.post(url, json=payload) as response:
+                async with session.post(MANDRILL_API_URL, json=payload) as response:
                     if response.status == 200:
-                        print(f"Email sent successfully to {', '.join(self.recipient_emails)}")
-                        return True
+                        result = await response.json()
+                        if all(msg.get('status') == 'sent' for msg in result):
+                            logger.info(f"Email sent successfully to {', '.join(self.recipient_emails)}")
+                            return True
+                        else:
+                            logger.error(f"Failed to send email via Mandrill: {result}")
+                            return False
                     else:
                         error_text = await response.text()
-                        print(f"Failed to send email via Mandrill: {error_text}")
+                        logger.error(f"Failed to send email via Mandrill: {error_text}")
                         return False
         except Exception as e:
-            print(f"Failed to send email via Mandrill: {str(e)}")
+            logger.error(f"Failed to send email via Mandrill: {str(e)}")
             return False
 
 
