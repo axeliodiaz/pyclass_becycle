@@ -39,6 +39,5 @@ MAILTRAP_INBOX_ID = ""  # Your inbox ID
 # Mandrill settings (used when DEBUG=False)
 MANDRILL_HOST = "smtp.mandrillapp.com"
 MANDRILL_PORT = 587
-MANDRILL_API_KEY = "md-hlrl5lLeZCr4A6WZgyQvtg"
 
 NEXT_WEEKS_NOTIFICATION = 1
