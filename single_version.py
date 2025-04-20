@@ -1,116 +1,108 @@
+"""Module for fetching and parsing class schedules from a single URL."""
+
+import logging.config
+
+import aiohttp
 from bs4 import BeautifulSoup
 import arrow
 
 import settings
+from clients.redis import RedisClient
+from logging_config.logging_config import LOGGING_CONFIG
 from utils import (
     check_valid_html,
     check_valid_class_type,
-    get_valid_schedule,
-    check_valid_instructor,
-    fetch_url,
-    show_schedule,
+    get_valid_time,
+    build_schedule,
+    get_valid_instructor, get_datetime_from_text,
 )
 
-
-def get_schedules():
-    found_schedules = 0
-    errors = 0
-    schedules = []
-
-    for class_id in range(settings.SCHEDULE_ID_START, settings.SCHEDULE_ID_FINISH):
-        # while class_id < settings.SCHEDULE_ID_FINISH:
-        url = settings.SCHEDULE_URL.format(class_id=class_id)
-
-        html = fetch_url(url)
-        schedule = parse_schedule(html)
-
-        if not schedule:
-            if settings.DEBUG:
-                print(f"Not found schedule in class ID {class_id}")
-            class_id += 1
-            continue
-
-        if "error" in schedule.keys():
-            if settings.DEBUG:
-                print(f"Error in class ID {class_id}")
-            errors += 1
-            class_id += 1
-            if settings.DEBUG:
-                print(f"Passing by error ID {class_id}. Error {errors}")
-
-            """
-            if errors >= settings.MAX_CONSECUTIVE_ERRORS:
-                print(
-                    f"Finishing execution due to {settings.MAX_CONSECUTIVE_ERRORS} consecutive errors. Last ID: {class_id}"
-                )
-                break
-            """
-            continue
-
-        schedule["url"] = url
-
-        # show_schedule(schedule)
-        schedules.append(schedule)
-        class_id += 1
-        found_schedules += 1
-
-    return schedules
+logging.config.dictConfig(LOGGING_CONFIG)
+logger = logging.getLogger(__name__)
 
 
-def parse_schedule(html):
+async def fetch_url(session, url):
+    """Asynchronously fetches the content of a URL."""
+    try:
+        async with session.get(url) as response:
+            response.raise_for_status()
+            return await response.text()
+    except aiohttp.ClientError as e:
+        logger.error("Error fetching %s: %s", url, e)
+        return None
+
+
+async def parse_schedule(html, url):
+    """Parses the HTML content to extract the schedule."""
+    if not html:
+        return {"error": "error"}
+
     soup = BeautifulSoup(html, features="html.parser")
     main_text = soup.find("main")
 
     if not check_valid_html(main_text):
-        return {"error": "error"}
+        return {"error": "check_valid_html"}
 
-    date_time_text = soup.find("div", class_="fecha").text
-    title_text = soup.find("div", class_="name").text
+    date_time = soup.find("div", class_="fecha")
+    title = soup.find("div", class_="name")
 
-    day = date_time_text.split()[1]
+    if not date_time or not title:
+        return {"error": "date_time or title"}
 
-    instructor = title_text.split()[-1]
+    date_time_text = date_time.text
+    date_time = get_datetime_from_text(text=date_time_text)
+    title_text = title.text
 
-    year = "2025"
-    month_MMMM = date_time_text.split()[3].replace(",", "")
+    if not check_valid_class_type(text=title_text):
+        return {"error": "check_valid_class_type"}
 
-    _time = date_time_text.split()[-2].split(":")
-    _hour = _time[0]
-    _minutes = _time[1]
-    date_time = arrow.get(
-        f"{year}/{month_MMMM}/{day} {_hour}:{_minutes}",
-        "YYYY/MMMM/DD HH:mm",
-        locale="es",
+    is_valid_time, _, _ = get_valid_time(text=date_time_text)
+    if not is_valid_time:
+        return {"error": "get_valid_time"}
+
+    is_valid_instructor, instructor = get_valid_instructor(text=title_text)
+    if not is_valid_instructor:
+        return {"error": "check_valid_instructor"}
+
+    schedule = build_schedule(
+        date_time_text=date_time_text,
+        instructor=instructor,
+        url=url,
+        datetime=date_time,
     )
+    return schedule
 
     if arrow.utcnow() > date_time or month_MMMM == "Diciembre":
         return {}
 
-    schedule = {"datetime": date_time, "instructor": instructor}
+async def process_schedule(session, class_id):
+    """Processes a specific schedule by its class ID.
 
-    if date_time.format("dddd", locale="es").title() in [
-        "Miercoles",
-        "Miércoles",
-        "Lunes",
-        "Viernes",
-    ]:
-        if date_time.format("HH:mm") == "07:15":
-            if instructor in settings.WANTED_INSTRUCTORS:
-                show_schedule(schedule)
-                return schedule
-
-    if (
-        date_time.format("dddd", locale="es").title() in ["Sabado", "Sábado"]
-        and date_time.format("HH:mm") == "09:15"
-        and instructor in settings.WANTED_INSTRUCTORS
-    ):
-        return schedule
-
-    return {}
+    data = {
+        "date_time_text": date_time_text,
+        "instructor": instructor,
+        "url": url,
+    }
+    """
+    url = settings.SCHEDULE_URL.format(class_id=class_id)
+    html = await fetch_url(session, url)
+    schedule = await parse_schedule(html, url)
+    redis_client = RedisClient()
+    if schedule and "error" not in schedule:
+        schedule["url"] = url
+        await redis_client.save_schedule(schedule)
+        return True, schedule
+    else:
+        logger.error(schedule)
+        return False, schedule
 
 
-if __name__ == "__main__":
-    schedules = get_schedules()
-    schedules = sorted(schedules, key=lambda x: x["datetime"])
-    for schedule in schedules:
-        show_schedule(schedule)
+async def create_schedules(class_id: int):
+    """Main function to retrieve schedules starting from a given class ID."""
+    async with aiohttp.ClientSession() as session:
+        success, schedule = await process_schedule(session, class_id)
+        if not success:
+            logger.warning(
+                "Error at ID %s. Success: %s. %s", class_id, success, schedule
+            )
+        return success, schedule

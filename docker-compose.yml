@@ -1,3 +1,5 @@
+version: '3.8'
+
 services:
   web_scraping:
     build:
@@ -6,6 +8,27 @@ services:
     volumes:
       - .:/app
     working_dir: /app
-    command: python main.py
+    command: uvicorn main:app --host 0.0.0.0 --reload --log-level debug
     environment:
       - PYTHONUNBUFFERED=1
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    networks:
+      - app_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    restart: always
+    ports:
+      - "6380:6379"
+    networks:
+      - app_network
+
+networks:
+  app_network:
+    driver: bridge
