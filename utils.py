@@ -10,7 +10,7 @@ import httpx
 import requests
 
 import settings
-from clients.notifications import EmailNotifier
+from clients.notifications import get_email_notifier
 from logging_config.logging_config import LOGGING_CONFIG
 from settings import NOT_ALLOWED_CLASS_TYPE
 
@@ -112,4 +112,18 @@ async def trigger_schedule(class_id: int):
 
 async def send_classes_report_email(body):
     """Send classes report email to pre-defined recipient emails."""
-    await EmailNotifier().send_email(body=body)
+    notifier = get_email_notifier()
+    await notifier.send_email(body=body)
+
+
+def get_next_week_schedules(schedules: list) -> list:
+    now = arrow.now()
+    # Start of next week (next Monday)
+    next_monday = now.shift(weeks=+settings.NEXT_WEEKS_NOTIFICATION).floor('week')
+    # End of the range: the Monday after that
+    following_monday = next_monday.shift(weeks=+1)
+
+    return [
+        s for s in schedules
+        if next_monday <= arrow.get(s['datetime']) < following_monday.shift(days=+1)
+    ]

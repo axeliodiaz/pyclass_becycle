@@ -1,73 +1,63 @@
-"""Module for handling email notifications using SMTP (Gmail or Mailtrap) or Mailtrap API."""
+"""Module for handling email notifications using Mailtrap (debug) or Mandrill (production)."""
 
-import ssl
-from email.message import EmailMessage
+from abc import ABC, abstractmethod
 
 import aiohttp
-import aiosmtplib
 
 import settings
 
 
-class EmailNotifier:
-    """
-    A class to send emails asynchronously using SMTP (Gmail or Mailtrap) or Mailtrap API.
-    """
+class BaseEmailNotifier(ABC):
+    """Abstract base class for email notifiers."""
 
     def __init__(self):
-        """
-        Initialize the email notifier with the sender's credentials.
-        """
+        """Initialize the email notifier with common settings."""
         self.sender_email = settings.EMAIL_SENDER
-        self.sender_password = settings.EMAIL_PASSWORD
-        self.smtp_server = settings.SMTP_SERVER
-        self.port = settings.SMTP_PORT
-        self.subject = settings.EMAIL_SUBJECT
         self.recipient_emails = settings.EMAIL_RECIPIENTS
-        self.use_mailtrap_api = settings.USE_MAILTRAP_API
-        self.mailtrap_api_token = settings.MAILTRAP_API_TOKEN
-        self.mailtrap_api_host = settings.MAILTRAP_API_HOST
-        self.mailtrap_inbox_id = settings.MAILTRAP_INBOX_ID
+        self.subject = settings.EMAIL_SUBJECT
 
+    @abstractmethod
     def validate_config(self) -> bool:
         """Validate that all required email settings are configured."""
-        if self.use_mailtrap_api:
-            return all([
-                self.sender_email,
-                self.mailtrap_api_token,
-                self.mailtrap_api_host,
-                self.mailtrap_inbox_id
-            ])
+        pass
+
+    @abstractmethod
+    async def send_email(self, body: str) -> bool:
+        """Send an email asynchronously to the specified recipients."""
+        pass
+
+
+class MailtrapEmailNotifier(BaseEmailNotifier):
+    """A class to send emails using Mailtrap API (for debugging)."""
+
+    def __init__(self):
+        """Initialize the Mailtrap email notifier."""
+        super().__init__()
+        self.api_token = settings.MAILTRAP_API_TOKEN
+        self.api_host = settings.MAILTRAP_API_HOST
+        self.inbox_id = settings.MAILTRAP_INBOX_ID
+
+    def validate_config(self) -> bool:
+        """Validate that all required Mailtrap settings are configured."""
         return all([
             self.sender_email,
-            self.sender_password,
-            self.smtp_server,
-            self.port
+            self.api_token,
+            self.api_host,
+            self.inbox_id
         ])
 
     async def send_email(self, body: str) -> bool:
-        """
-        Send an email asynchronously to the specified recipients.
-
-        :param body: Body of the email.
-        :return: True if the email was sent successfully, False otherwise.
-        """
-        if not self.validate_config():
-            print("Email configuration is invalid")
-            return False
-
-        if self.use_mailtrap_api:
-            return await self._send_email_api(body)
-        return await self._send_email_smtp(body)
-
-    async def _send_email_api(self, body: str) -> bool:
         """
         Send an email using Mailtrap API.
 
         :param body: Body of the email.
         :return: True if the email was sent successfully, False otherwise.
         """
-        url = f"https://{self.mailtrap_api_host}/api/send/{self.mailtrap_inbox_id}"
+        if not self.validate_config():
+            print("Mailtrap configuration is invalid")
+            return False
+
+        url = f"https://{self.api_host}/api/send/{self.inbox_id}"
         
         payload = {
             "from": {
@@ -81,7 +71,7 @@ class EmailNotifier:
         }
 
         headers = {
-            "Authorization": f"Bearer {self.mailtrap_api_token}",
+            "Authorization": f"Bearer {self.api_token}",
             "Content-Type": "application/json"
         }
 
@@ -93,45 +83,75 @@ class EmailNotifier:
                         return True
                     else:
                         error_text = await response.text()
-                        print(f"Failed to send email via API: {error_text}")
+                        print(f"Failed to send email via Mailtrap: {error_text}")
                         return False
         except Exception as e:
-            print(f"Failed to send email via API: {str(e)}")
+            print(f"Failed to send email via Mailtrap: {str(e)}")
             return False
 
-    async def _send_email_smtp(self, body: str) -> bool:
+
+class MandrillEmailNotifier(BaseEmailNotifier):
+    """A class to send emails using Mandrill API (for production)."""
+
+    def __init__(self):
+        """Initialize the Mandrill email notifier."""
+        super().__init__()
+        self.api_key = settings.MANDRILL_API_KEY
+
+    def validate_config(self) -> bool:
+        """Validate that all required Mandrill settings are configured."""
+        return all([
+            self.sender_email,
+            self.api_key
+        ])
+
+    async def send_email(self, body: str) -> bool:
         """
-        Send an email using SMTP.
+        Send an email using Mandrill API.
 
         :param body: Body of the email.
         :return: True if the email was sent successfully, False otherwise.
         """
-        msg = EmailMessage()
-        msg["From"] = self.sender_email
-        msg["To"] = ", ".join(self.recipient_emails)
-        msg["Subject"] = self.subject
-        msg.set_content(body)
+        if not self.validate_config():
+            print("Mandrill configuration is invalid")
+            return False
+
+        url = "https://mandrillapp.com/api/1.0/messages/send.json"
+        
+        payload = {
+            "key": self.api_key,
+            "message": {
+                "from_email": self.sender_email,
+                "to": [{"email": email} for email in self.recipient_emails],
+                "subject": self.subject,
+                "text": body,
+                "headers": {
+                    "Reply-To": self.sender_email
+                }
+            }
+        }
 
         try:
-            # Create SSL context
-            context = ssl.create_default_context()
-            
-            # Connect to SMTP server
-            smtp = aiosmtplib.SMTP(
-                hostname=self.smtp_server,
-                port=self.port,
-                use_tls=True,
-                tls_context=context
-            )
-            
-            await smtp.connect()
-            await smtp.login(self.sender_email, self.sender_password)
-            await smtp.send_message(msg)
-            await smtp.quit()
-            
-            print(f"Email sent successfully to {', '.join(self.recipient_emails)}")
-            return True
-            
+            async with aiohttp.ClientSession() as session:
+                async with session.post(url, json=payload) as response:
+                    if response.status == 200:
+                        print(f"Email sent successfully to {', '.join(self.recipient_emails)}")
+                        return True
+                    else:
+                        error_text = await response.text()
+                        print(f"Failed to send email via Mandrill: {error_text}")
+                        return False
         except Exception as e:
-            print(f"Failed to send email via SMTP: {str(e)}")
+            print(f"Failed to send email via Mandrill: {str(e)}")
             return False
+
+
+def get_email_notifier():
+    """
+    Get the appropriate email notifier based on debug settings.
+    
+    :return: An instance of BaseEmailNotifier
+    """
+    if settings.DEBUG:
+        return MailtrapEmailNotifier()
+    return MandrillEmailNotifier()

@@ -28,13 +28,17 @@ ASYNC_MODE = True
 EMAIL_SENDER = None
 EMAIL_PASSWORD = None
 EMAIL_RECIPIENTS = []
-SMTP_SERVER = "sandbox.smtp.mailtrap.io"  # Mailtrap SMTP server
-SMTP_PORT = 2525  # Mailtrap SMTP port
 SEND_EMAIL_REPORT = False
 EMAIL_SUBJECT = "New classes schedules"
 
-# Mailtrap API settings
-MAILTRAP_API_TOKEN = "c5d94f9dd2af8e8861145c96d7f09a88"
+# Mailtrap API settings (used when DEBUG=True)
+MAILTRAP_API_TOKEN = ""
 MAILTRAP_API_HOST = "sandbox.api.mailtrap.io"
-MAILTRAP_INBOX_ID = "509395"  # Your inbox ID
-USE_MAILTRAP_API = True  # Flag to switch between SMTP and API
+MAILTRAP_INBOX_ID = ""  # Your inbox ID
+
+# Mandrill settings (used when DEBUG=False)
+MANDRILL_HOST = "smtp.mandrillapp.com"
+MANDRILL_PORT = 587
+MANDRILL_API_KEY = "md-hlrl5lLeZCr4A6WZgyQvtg"
+
+NEXT_WEEKS_NOTIFICATION = 1
