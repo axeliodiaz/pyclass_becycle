@@ -1,9 +1,9 @@
 """Module for handling email notifications using Mailtrap (debug) or SendGrid (production)."""
 
-from abc import ABC, abstractmethod
 import logging
+from abc import ABC, abstractmethod
+
 import aiohttp
-import os
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
@@ -68,12 +68,12 @@ class MailtrapEmailNotifier(BaseEmailNotifier):
         payload = {
             "from": {
                 "email": self.sender_email,
-                "name": "Ride Flow Notifier"
+                "name": "Ride Flow"
             },
             "to": [{"email": email} for email in self.recipient_emails],
             "subject": self.subject,
             "html": body,
-            "category": "Ride Flow Schedule"
+            "category": "Ride Flow"
         }
 
         headers = {
@@ -124,7 +124,7 @@ class SendGridEmailNotifier(BaseEmailNotifier):
 
         # Create a Mail message using SendGrid's helper classes
         message = Mail(
-            from_email=self.sender_email,
+            from_email=(self.sender_email, "Ride Flow Notifier"),
             to_emails=self.recipient_emails,
             subject=self.subject,
             html_content=body
