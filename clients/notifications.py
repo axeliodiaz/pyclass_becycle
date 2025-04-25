@@ -1,11 +1,14 @@
-"""Module for handling email notifications using Mailtrap (debug) or Mandrill (production)."""
+"""Module for handling email notifications using Mailtrap (debug) or SendGrid (production)."""
 
 from abc import ABC, abstractmethod
 import logging
 import aiohttp
+import os
+from sendgrid import SendGridAPIClient
+from sendgrid.helpers.mail import Mail
 
 import settings
-from clients.constants import MAILTRAP_API_URL, MANDRILL_API_URL
+from clients.constants import MAILTRAP_API_URL
 
 logger = logging.getLogger(__name__)
 
@@ -61,16 +64,16 @@ class MailtrapEmailNotifier(BaseEmailNotifier):
             return False
 
         url = MAILTRAP_API_URL.format(host=self.api_host, inbox_id=self.inbox_id)
-        
+
         payload = {
             "from": {
                 "email": self.sender_email,
-                "name": "Becycle Notifier"
+                "name": "Ride Flow Notifier"
             },
             "to": [{"email": email} for email in self.recipient_emails],
             "subject": self.subject,
-            "text": body,
-            "category": "Becycle Schedule"
+            "html": body,
+            "category": "Ride Flow Schedule"
         }
 
         headers = {
@@ -93,16 +96,16 @@ class MailtrapEmailNotifier(BaseEmailNotifier):
             return False
 
 
-class MandrillEmailNotifier(BaseEmailNotifier):
-    """A class to send emails using Mandrill API (for production)."""
+class SendGridEmailNotifier(BaseEmailNotifier):
+    """A class to send emails using SendGrid API (for production)."""
 
     def __init__(self):
-        """Initialize the Mandrill email notifier."""
+        """Initialize the SendGrid email notifier."""
         super().__init__()
-        self.api_key = settings.MANDRILL_API_KEY
+        self.api_key = settings.SENDGRID_API_KEY
 
     def validate_config(self) -> bool:
-        """Validate that all required Mandrill settings are configured."""
+        """Validate that all required SendGrid settings are configured."""
         return all([
             self.sender_email,
             self.api_key
@@ -110,54 +113,48 @@ class MandrillEmailNotifier(BaseEmailNotifier):
 
     async def send_email(self, body: str) -> bool:
         """
-        Send an email using Mandrill API.
+        Send an email using SendGrid API.
 
         :param body: Body of the email.
         :return: True if the email was sent successfully, False otherwise.
         """
         if not self.validate_config():
-            logger.error("Mandrill configuration is invalid")
+            logger.error("SendGrid configuration is invalid")
             return False
 
-        payload = {
-            "key": self.api_key,
-            "message": {
-                "from_email": self.sender_email,
-                "to": [{"email": email} for email in self.recipient_emails],
-                "subject": self.subject,
-                "text": body,
-                "headers": {
-                    "Reply-To": self.sender_email
-                }
-            }
-        }
+        # Create a Mail message using SendGrid's helper classes
+        message = Mail(
+            from_email=self.sender_email,
+            to_emails=self.recipient_emails,
+            subject=self.subject,
+            html_content=body
+        )
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(MANDRILL_API_URL, json=payload) as response:
-                    if response.status == 200:
-                        result = await response.json()
-                        if all(msg.get('status') == 'sent' for msg in result):
-                            logger.info(f"Email sent successfully to {', '.join(self.recipient_emails)}")
-                            return True
-                        else:
-                            logger.error(f"Failed to send email via Mandrill: {result}")
-                            return False
-                    else:
-                        error_text = await response.text()
-                        logger.error(f"Failed to send email via Mandrill: {error_text}")
-                        return False
+            # Create a SendGrid client
+            sg = SendGridAPIClient(self.api_key)
+
+            # Send the email
+            response = sg.send(message)
+
+            if response.status_code in (200, 202):
+                logger.info(f"Email sent successfully to {', '.join(self.recipient_emails)}")
+                logger.debug(f"SendGrid response: status_code={response.status_code}, body={response.body}, headers={response.headers}")
+                return True
+            else:
+                logger.error(f"Failed to send email via SendGrid: status_code={response.status_code}, body={response.body}")
+                return False
         except Exception as e:
-            logger.error(f"Failed to send email via Mandrill: {str(e)}")
+            logger.error(f"Failed to send email via SendGrid: {str(e)}")
             return False
 
 
 def get_email_notifier():
     """
     Get the appropriate email notifier based on debug settings.
-    
+
     :return: An instance of BaseEmailNotifier
     """
     if settings.DEBUG:
         return MailtrapEmailNotifier()
-    return MandrillEmailNotifier()
+    return SendGridEmailNotifier()

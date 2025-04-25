@@ -3,5 +3,4 @@
 # Mailtrap API URLs
 MAILTRAP_API_URL = "https://{host}/api/send/{inbox_id}"
 
-# Mandrill API URLs
-MANDRILL_API_URL = "https://mandrillapp.com/api/1.0/messages/send.json" 
+# SendGrid is now using the Python library which handles API URLs internally

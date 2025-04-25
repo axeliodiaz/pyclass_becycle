@@ -2,6 +2,7 @@
 
 import asyncio
 import logging.config
+import os
 from urllib.parse import urljoin
 
 import arrow
@@ -75,12 +76,28 @@ async def send_email_report_email():
     schedules = await redis_client.get_all_schedules()
     schedules_sorted = sorted(schedules, key=lambda s: arrow.get(s["datetime"]))
     schedules = get_next_week_schedules(schedules=schedules_sorted)
-    body = ""
+
+    # Read the HTML template file
+    template_path = os.path.join('templates', 'emails', 'class_schedule.html')
+    with open(template_path, 'r') as template_file:
+        template = template_file.read()
+
+    # Generate the class items HTML
+    class_items_html = ""
     for schedule in schedules:
         date_time_text = schedule["date_time_text"]
         instructor = schedule["instructor"]
         url = schedule["url"]
-        body += f"{instructor}. {date_time_text}: {url}\n\n"
+        class_items_html += f"""
+        <div class="class-item">
+            <div class="instructor">{instructor}</div>
+            <div class="date-time">{date_time_text}</div>
+            <a href="{url}" class="class-link">Book this class</a>
+        </div>
+        """
+
+    # Replace the placeholder with the generated class items HTML
+    body = template.replace('{class_items}', class_items_html)
 
     await send_classes_report_email(body=body)
     return {"message": "Email sending."}

@@ -3,7 +3,7 @@
 HOST = "localhost"
 PORT = 8000
 BASE_URL = f"http://{HOST}:{PORT}"
-SCHEDULE_URL = "https://becycle.cl/clase/{class_id}/"
+SCHEDULE_URL = "https://ride-flow.com/clase/{class_id}/"
 INSTRUCTORS_WANTED = []
 TIMES_WANTED = [
     {"Lunes": "07:15"},
@@ -36,8 +36,7 @@ MAILTRAP_API_TOKEN = ""
 MAILTRAP_API_HOST = "sandbox.api.mailtrap.io"
 MAILTRAP_INBOX_ID = ""  # Your inbox ID
 
-# Mandrill settings (used when DEBUG=False)
-MANDRILL_HOST = "smtp.mandrillapp.com"
-MANDRILL_PORT = 587
+# SendGrid settings (used when DEBUG=False)
+SENDGRID_API_VERSION = "v3"
 
 NEXT_WEEKS_NOTIFICATION = 1
