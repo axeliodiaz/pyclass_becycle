@@ -81,7 +81,7 @@ def get_valid_time(text: str) -> (bool, str, str):
     return False, None, None
 
 
-def build_schedule(date_time_text, instructor, url, datetime):
+def build_schedule(date_time_text, instructor, url, datetime, location=None):
     """Build the schedule."""
     data = {
         "date_time_text": date_time_text,
@@ -89,6 +89,8 @@ def build_schedule(date_time_text, instructor, url, datetime):
         "url": url,
         "datetime": datetime
     }
+    if location:
+        data["location"] = location
     return data
 
 
@@ -116,14 +118,24 @@ async def send_classes_report_email(body):
     await notifier.send_email(body=body)
 
 
-def get_next_week_schedules(schedules: list) -> list:
+def get_next_week_schedules(schedules: list) -> tuple:
     now = arrow.now()
-    # Start of next week (next Monday)
-    next_monday = now.shift(weeks=+settings.NEXT_WEEKS_NOTIFICATION).floor('week')
-    # End of the range: the Monday after that
+
+    if settings.NEXT_WEEKS_NOTIFICATION == 0:
+        # If NEXT_WEEKS_NOTIFICATION is 0, check from this Monday to next Monday
+        next_monday = now.floor('week')  # Start of current week (this Monday)
+        # next_monday = this_monday.shift(weeks=+1)  # Start of next week (next Monday)
+    else:
+        # Otherwise, check the week after NEXT_WEEKS_NOTIFICATION weeks
+        next_monday = now.shift(weeks=+settings.NEXT_WEEKS_NOTIFICATION).floor('week')  # Start of that week (Monday)
+
+    # End of the range: the Monday after the start
     following_monday = next_monday.shift(weeks=+1)
 
-    return [
+    filtered_schedules = [
         s for s in schedules
         if next_monday <= arrow.get(s['datetime']) < following_monday.shift(days=+1)
     ]
+
+    # Return both the filtered schedules and the date range
+    return filtered_schedules, (next_monday, following_monday)

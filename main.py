@@ -75,7 +75,15 @@ async def send_email_report_email():
     redis_client = RedisClient()
     schedules = await redis_client.get_all_schedules()
     schedules_sorted = sorted(schedules, key=lambda s: arrow.get(s["datetime"]))
-    schedules = get_next_week_schedules(schedules=schedules_sorted)
+
+    # Get filtered schedules and date range
+    filtered_schedules, date_range = get_next_week_schedules(schedules=schedules_sorted)
+    start_date, end_date = date_range
+
+    # Format dates in a user-friendly way (e.g., "Monday, May 6" to "Sunday, May 12")
+    start_date_formatted = start_date.format('dddd, MMMM D', locale='en')
+    end_date_formatted = end_date.shift(days=-1).format('dddd, MMMM D', locale='en')  # End date is exclusive, so subtract 1 day
+    date_range_text = f"{start_date_formatted} to {end_date_formatted}"
 
     # Read the HTML template file
     template_path = os.path.join('templates', 'emails', 'class_schedule.html')
@@ -84,20 +92,30 @@ async def send_email_report_email():
 
     # Generate the class items HTML
     class_items_html = ""
-    for schedule in schedules:
+    for schedule in filtered_schedules:
         date_time_text = schedule["date_time_text"]
         instructor = schedule["instructor"]
         url = schedule["url"]
+        location = schedule.get("location", "")
+        location_html = f'<div class="location">{location}</div>' if location else ""
         class_items_html += f"""
         <div class="class-item">
             <div class="instructor">{instructor}</div>
             <div class="date-time">{date_time_text}</div>
+            {location_html}
             <a href="{url}" class="class-link">Book this class</a>
         </div>
         """
 
-    # Replace the placeholder with the generated class items HTML
-    body = template.replace('{class_items}', class_items_html)
+    # Add date range information to the template
+    date_range_html = f"""
+    <div class="alert alert-info" role="alert">
+        <p>Schedule for: <strong>{date_range_text}</strong></p>
+    </div>
+    """
+
+    # Replace the placeholder with the generated class items HTML and add date range
+    body = template.replace('{class_items}', date_range_html + class_items_html)
 
     await send_classes_report_email(body=body)
     return {"message": "Email sending."}

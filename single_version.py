@@ -45,9 +45,12 @@ async def parse_schedule(html, url):
 
     date_time = soup.find("div", class_="fecha")
     title = soup.find("div", class_="name")
+    location = soup.find("div", class_="estudio")
 
     if not date_time or not title:
         return {"error": "date_time or title"}
+
+    location_text = location.text if location else None
 
     date_time_text = date_time.text
     date_time = get_datetime_from_text(text=date_time_text)
@@ -69,6 +72,7 @@ async def parse_schedule(html, url):
         instructor=instructor,
         url=url,
         datetime=date_time,
+        location=location_text,
     )
     return schedule
 
